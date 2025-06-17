@@ -185,6 +185,7 @@ export class ScatterPlot {
   gridG: any;
   fitLine: any;
   referencesG: any;
+  groupFocusG: any;
   legendG: any;
   tooltipG: any;
   colorArr: any;
@@ -1594,6 +1595,10 @@ export class ScatterPlot {
     this.subTitleG = select(this.scatterChartEl).select('.scatter-sub-title');
     this.tooltipG = select(this.scatterChartEl).select('.scatter-tooltip');
     this.referencesG = this.rootG.append('g').attr('class', 'scatter-reference-line-group');
+    this.groupFocusG = this.rootG
+      .append('g')
+      .attr('class', 'vcl-group-focus-container')
+      .style('display', 'none');
   }
 
   setGlobalSelections() {
@@ -1700,6 +1705,7 @@ export class ScatterPlot {
 
     this.enterPointWrappers
       .attr('class', 'series-point-group')
+      .attr('id', d => this.chartID + '-group-' + d.key)
       .attr('cursor', !this.suppressEvents ? this.cursor : null)
       .on(
         'mouseover',

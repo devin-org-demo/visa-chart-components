@@ -9,6 +9,7 @@ import { select, event } from 'd3-selection';
 import { getBrowser } from './browser-util';
 import { polyfillMouseEvents } from './customPolyfills';
 import { setHighContrastListener } from './accessibilityUtils';
+import { createGroupFocusFilter } from './textures';
 import { createLabel, createGroupLabel } from './altTextGenerator';
 import { translate } from './localization';
 import { capitalized } from './calculation';
@@ -1177,6 +1178,10 @@ const removeKeyboardHighlight = (parent: any, rootOnly?: boolean) => {
   select(parent.ownerSVGElement)
     .selectAll('.' + className + '-indicator')
     .remove();
+  
+  if (parent.ownerSVGElement) {
+    select(parent.ownerSVGElement).select('.vcl-group-focus-container').style('display', 'none');
+  }
 };
 
 const hideKeyboardHighlight = (parent: any) => {
@@ -1197,6 +1202,47 @@ const drawKeyboardFocusClone = (inputElement: any, recursive?: boolean) => {
   let shouldDeleteSource = false;
   const className = !(source.tagName === 'svg') ? 'vcl-accessibility-focus' : 'vcl-accessibility-focus-root';
   const isNotAGeometry = source.tagName === 'g' || source.tagName === 'svg';
+  
+  const isGroupElement = source.tagName === 'g' && 
+    (select(source).classed('series-point-group') || 
+     select(source).classed('line-group') || 
+     select(source).classed('clustered-bar-group') ||
+     select(source).attr('class')?.includes('group'));
+  
+  if (isGroupElement) {
+    const svgRoot = select(source).select(function() { return this.ownerSVGElement; }).node();
+    const chartID = select(svgRoot).attr('id')?.replace('visa-viz-d3-', '').replace('-svg', '');
+    
+    if (chartID) {
+
+      const filterUrl = createGroupFocusFilter({ root: svgRoot, id: chartID });
+      
+      let groupFocusContainer = select(svgRoot).select('.vcl-group-focus-container');
+      if (!groupFocusContainer.size()) {
+        groupFocusContainer = select(svgRoot)
+          .append('g')
+          .attr('class', 'vcl-group-focus-container')
+          .style('display', 'none');
+      }
+      
+      const groupId = select(source).attr('id');
+      if (groupId) {
+        const useElements = groupFocusContainer.selectAll('use')
+          .data([{ href: '#' + groupId }]);
+          
+        useElements.enter()
+          .append('use')
+          .merge(useElements)
+          .attr('href', d => d.href);
+
+        groupFocusContainer
+          .attr('filter', filterUrl)
+          .style('display', 'block');
+      }
+      
+      return;
+    }
+  }
   if (isNotAGeometry) {
     const bbox = source.getBBox();
     const width = source.tagName === 'svg' ? Math.max(+source.getAttribute('width') - 10, 0) : +bbox.width + 10;

@@ -198,6 +198,7 @@ export class LineChart {
   innerPaddedHeight: number;
   innerPaddedWidth: number;
   referencesG: any;
+  groupFocusG: any;
   defaults: boolean;
   duration: number;
   legendG: any;
@@ -1692,6 +1693,10 @@ export class LineChart {
     this.subTitleG = select(this.lineChartEl).select('.line-sub-title');
     this.tooltipG = select(this.lineChartEl).select('.line-tooltip');
     this.referencesG = this.rootG.append('g').attr('class', 'line-reference-line-group');
+    this.groupFocusG = this.rootG
+      .append('g')
+      .attr('class', 'vcl-group-focus-container')
+      .style('display', 'none');
   }
 
   reSetRoot() {
@@ -1999,6 +2004,7 @@ export class LineChart {
 
     this.enter
       .attr('class', 'line-plot entering')
+      .attr('id', d => this.chartID + '-group-' + d.key)
       .attr('d', d => this.line(d.values))
       .attr('data-d', d => this.line(d.values))
       .attr('data-translate-x', this.margin.left + this.padding.left);

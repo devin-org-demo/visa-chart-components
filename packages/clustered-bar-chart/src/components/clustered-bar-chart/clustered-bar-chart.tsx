@@ -185,6 +185,7 @@ export class ClusteredBarChart {
   labelG: any;
   labels: any;
   referencesG: any;
+  groupFocusG: any;
   defaults: boolean;
   current: any;
   enter: any;
@@ -1414,6 +1415,10 @@ export class ClusteredBarChart {
     this.tooltipG = select(this.clusteredBarChartEl).select('.clustered-bar-tooltip');
 
     this.referencesG = this.rootG.append('g').attr('class', 'clustered-bar-reference-line-group');
+    this.groupFocusG = this.rootG
+      .append('g')
+      .attr('class', 'vcl-group-focus-container')
+      .style('display', 'none');
   }
 
   setTestingAttributes() {
@@ -1706,6 +1711,7 @@ export class ClusteredBarChart {
 
     this.enterBarWrappers
       .attr('class', 'clustered-bar-wrapper')
+      .attr('id', d => this.chartID + '-group-' + d.key)
       .classed('entering', true)
       .attr('transform', d =>
         this.layout === 'vertical' ? 'translate(' + this.x0(d.key) + ',0)' : 'translate(0,' + this.y0(d.key) + ')'

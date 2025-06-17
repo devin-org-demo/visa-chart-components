@@ -1496,6 +1496,68 @@ export const createTextStrokeFilter = ({
   return createUrl(strokeId);
 };
 
+export const createGroupFocusFilter = ({ root, id }) => {
+  let defs = select(root).select('defs');
+  if (!defs.size()) {
+    defs = select(root).append('defs');
+  }
+  
+  const filterId = 'group-focus-filter-' + id;
+  if (defs.select('#' + filterId).size()) {
+    defs.select('#' + filterId).remove();
+  }
+  
+  const filter = defs
+    .append('filter')
+    .attr('id', filterId)
+    .attr('class', 'vcl-group-focus-filter');
+    
+  filter
+    .append('feMorphology')
+    .attr('in', 'SourceAlpha')
+    .attr('result', 'dilatedText')
+    .attr('operator', 'dilate')
+    .attr('radius', 10);
+  
+  filter
+    .append('feFlood')
+    .attr('flood-color', '#fff')
+    .attr('result', 'whiteOutline');
+  
+  filter
+    .append('feComposite')
+    .attr('in', 'whiteOutline')
+    .attr('in2', 'dilatedText')
+    .attr('operator', 'in')
+    .attr('result', 'whiteStroke');
+  
+  filter
+    .append('feMorphology')
+    .attr('in', 'SourceAlpha')
+    .attr('result', 'dilatedBlack')
+    .attr('operator', 'dilate')
+    .attr('radius', 11.5);
+  
+  filter
+    .append('feFlood')
+    .attr('flood-color', '#000')
+    .attr('result', 'blackStroke');
+  
+  filter
+    .append('feComposite')
+    .attr('in', 'blackStroke')
+    .attr('in2', 'dilatedBlack')
+    .attr('operator', 'in')
+    .attr('result', 'blackOutline');
+  
+  const merge = filter.append('feMerge');
+  merge.append('feMergeNode').attr('in', 'blackOutline');
+  merge.append('feMergeNode').attr('in', 'whiteStroke');
+  merge.append('feMergeNode').attr('in', 'SourceGraphic');
+  
+  return createUrl(filterId);
+};
+
 export const createMultiStrokeFilter = ({
   root,
   id,
