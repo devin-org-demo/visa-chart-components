@@ -1170,12 +1170,18 @@ const getInteractionResult = (
 
 const removeKeyboardHighlight = (parent: any, rootOnly?: boolean) => {
   const className = !rootOnly ? 'vcl-accessibility-focus' : 'vcl-accessibility-focus-root';
-  select(parent.ownerSVGElement)
+  const ownerSVG = parent.ownerSVGElement || parent;
+
+  select(ownerSVG)
     .selectAll('.' + className + '-source')
     .classed(className + '-source', false);
 
-  select(parent.ownerSVGElement)
+  select(ownerSVG)
     .selectAll('.' + className + '-indicator')
+    .remove();
+
+  select(ownerSVG)
+    .selectAll('.VCL-group-focus-filter')
     .remove();
 };
 
@@ -1185,6 +1191,72 @@ const hideKeyboardHighlight = (parent: any) => {
     .classed('hidden', true)
     .style('opacity', 0)
     .attr('opacity', 0);
+};
+
+const createGroupFocusFilter = (root: any, id: string) => {
+  let rootDefs = select(root).select('defs');
+  if (!rootDefs.size()) {
+    rootDefs = select(root).append('defs');
+  }
+  const filterId = 'VCL-group-focus-filter-' + id;
+
+  rootDefs.select('#' + filterId).remove();
+
+  const filter = rootDefs
+    .append('filter')
+    .attr('id', filterId)
+    .attr('class', 'VCL-group-focus-filter');
+
+  filter
+    .append('feMorphology')
+    .attr('in', 'SourceAlpha')
+    .attr('operator', 'dilate')
+    .attr('radius', '3')
+    .attr('result', 'halo-morph');
+
+  filter
+    .append('feFlood')
+    .attr('flood-color', '#000000')
+    .attr('result', 'halo-color');
+
+  filter
+    .append('feComposite')
+    .attr('in', 'halo-color')
+    .attr('in2', 'halo-morph')
+    .attr('operator', 'in')
+    .attr('result', 'halo-stroke');
+
+  filter
+    .append('feMorphology')
+    .attr('in', 'SourceAlpha')
+    .attr('operator', 'dilate')
+    .attr('radius', '1.5')
+    .attr('result', 'highlight-morph');
+
+  filter
+    .append('feFlood')
+    .attr('flood-color', '#ffffff')
+    .attr('result', 'highlight-color');
+
+  filter
+    .append('feComposite')
+    .attr('in', 'highlight-color')
+    .attr('in2', 'highlight-morph')
+    .attr('operator', 'in')
+    .attr('result', 'highlight-stroke');
+
+  const feMerge = filter.append('feMerge');
+  feMerge.append('feMergeNode').attr('in', 'halo-stroke');
+  feMerge.append('feMergeNode').attr('in', 'highlight-stroke');
+  feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+  return 'url(#' + filterId + ')';
+};
+
+const generateGroupFocusId = (element: any) => {
+  const elementId = select(element).attr('id') || 'group';
+  const timestamp = Date.now();
+  return elementId + '-' + timestamp;
 };
 
 const drawKeyboardFocusClone = (inputElement: any, recursive?: boolean) => {
@@ -1198,23 +1270,29 @@ const drawKeyboardFocusClone = (inputElement: any, recursive?: boolean) => {
   const className = !(source.tagName === 'svg') ? 'vcl-accessibility-focus' : 'vcl-accessibility-focus-root';
   const isNotAGeometry = source.tagName === 'g' || source.tagName === 'svg';
   if (isNotAGeometry) {
-    const bbox = source.getBBox();
-    const width = source.tagName === 'svg' ? Math.max(+source.getAttribute('width') - 10, 0) : +bbox.width + 10;
-    const height = source.tagName === 'svg' ? Math.max(+source.getAttribute('height') - 10, 0) : +bbox.height + 10;
-    const x = source.tagName === 'svg' ? 5 : +bbox.x - 5;
-    const y = source.tagName === 'svg' ? 5 : +bbox.y - 5;
-    const newSource = select(!(source.tagName === 'svg') ? source.parentNode : source)
-      .append('rect')
-      .attr('x', x)
-      .attr('y', y)
-      .attr('width', width)
-      .attr('height', height)
-      .attr('transform', select(source).attr('transform') || null)
-      .attr('fill', 'none')
-      .style('fill', 'none');
+    const root = source.ownerSVGElement || source;
+    const groupId = generateGroupFocusId(source);
+    const filterUrl = createGroupFocusFilter(root, groupId);
 
-    source = newSource.node();
-    shouldDeleteSource = true;
+    if (!select(source).attr('id')) {
+      select(source).attr('id', 'group-focus-source-' + groupId);
+    }
+
+    const parent = source.parentNode;
+    removeKeyboardHighlight(parent.tagName !== 'svg' ? parent : parent.firstElementChild);
+
+    const useElement = select(source.parentNode)
+      .append('use')
+      .attr('href', '#' + select(source).attr('id'))
+      .attr('filter', filterUrl)
+      .attr('class', className + '-highlight ' + className + '-indicator')
+      .attr('aria-hidden', true)
+      .attr('focusable', false)
+      .style('pointer-events', 'none');
+
+    select(source).classed(className + '-source', true);
+
+    return;
   } else {
     const shouldHideOutline = select(source)
       .style('outline')
